@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LibraryClound - Livraria Virtual Inteligente</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Merriweather:ital,wght@0,300;0,400;0,700;1,300&display=swap" rel="stylesheet">
+</head>
+<body>
+
+    <!-- CABEÇALHO / NAVBAR COM A LOGO DA LIBRARYCLOUND -->
+    <header class="navbar">
+        <div class="nav-container">
+            <!-- LOGO: Livro com uma Nuvem Vermelha na Capa -->
+            <div class="logo" onclick="irParaHome()" style="cursor: pointer;">
+                <div class="brand-logo-container" title="LibraryClound - Livro com Nuvem Vermelha">
+                    <svg class="brand-svg" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <!-- Livro Base Azul Escuro / Roxo -->
+                        <rect x="6" y="6" width="36" height="36" rx="6" fill="#1e1b4b" stroke="#312e81" stroke-width="2"/>
+                        <path d="M12 6V42" stroke="#4338ca" stroke-width="2.5" stroke-dasharray="2 2"/>
+                        <rect x="14" y="9" width="25" height="30" rx="3" fill="#2e1065"/>
+                        <!-- Páginas Laterais Douradas/Brancas -->
+                        <path d="M39 10V38C40.5 38 42 36.5 42 35V13C42 11.5 40.5 10 39 10Z" fill="#fde047"/>
+                        <!-- Nuvem Vermelha Marcante na Capa do Livro -->
+                        <path d="M22 28C20.34 28 19 26.66 19 25C19 23.58 19.98 22.39 21.32 22.08C21.11 21.59 21 21.05 21 20.5C21 18.57 22.57 17 24.5 17C26.04 17 27.35 18.01 27.81 19.42C28.32 19.16 28.89 19 29.5 19C31.43 19 33 20.57 33 22.5C33 22.74 32.97 22.97 32.92 23.2C33.56 23.63 34 24.38 34 25.25C34 26.77 32.77 28 31.25 28H22Z" fill="url(#redCloudGradient)" filter="drop-shadow(0px 2px 3px rgba(0,0,0,0.4))"/>
+                        <defs>
+                            <linearGradient id="redCloudGradient" x1="19" y1="17" x2="34" y2="28" gradientUnits="userSpaceOnUse">
+                                <stop stop-color="#ff4d4d"/>
+                                <stop offset="1" stop-color="#dc2626"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                </div>
+                <div class="logo-text-wrap">
+                    <span class="logo-text">Library<strong class="highlight-red">Clound</strong></span>
+                    <span class="logo-slogan">Livraria Virtual & Leitura</span>
+                </div>
+            </div>
+
+            <!-- Sessão de Usuário Deslogado -->
+            <div id="nav-guest" class="nav-actions">
+                <button class="btn btn-outline" onclick="abrirModalAuth('login')">Entrar</button>
+                <button class="btn btn-primary" onclick="abrirModalAuth('register')">Cadastrar-se</button>
+            </div>
+
+            <!-- Sessão de Usuário Autenticado -->
+            <div id="nav-user" class="nav-actions hidden">
+                <!-- PERFIL DO USUÁRIO COM FOTO E NOME -->
+                <div class="user-badge" id="user-badge-container" onclick="abrirModalPerfil('dados')" title="Clique para abrir e editar seu perfil ou ver favoritos">
+                    <img id="user-avatar-img" src="" alt="Avatar" class="avatar-photo hidden">
+                    <div class="avatar-circle" id="user-avatar-initial">U</div>
+                    <div class="user-info">
+                        <span class="user-name" id="user-name-display">Nome Fantasia</span>
+                        <span class="user-role-tag" id="user-role-display">CLIENTE</span>
+                    </div>
+                </div>
+
+                <!-- CONTADOR DE LIVROS LIDOS NO PERFIL -->
+                <div class="read-counter-card" title="Contador oficial: atualiza somente ao clicar no botão no fim do livro!">
+                    <span class="counter-icon">🏆</span>
+                    <div class="counter-details">
+                        <span class="counter-label">Livros Lidos:</span>
+                        <strong class="counter-value" id="profile-books-read">0</strong>
+                    </div>
+                </div>
+
+                <!-- Botão de Acesso ao Painel Admin -->
+                <button id="btn-admin-panel" class="btn btn-admin hidden" onclick="alternarPainelAdmin()">
+                    ⚙️ Painel do Dono
+                </button>
+
+                <button class="btn btn-ghost" onclick="fazerLogout()" title="Sair da conta">Sair 🚪</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- CONTEÚDO PRINCIPAL -->
+    <main class="main-container">
+
+        <!-- MENSAGEM / ALERTA DE TOAST FLUTUANTE -->
+        <div id="toast" class="toast hidden"></div>
+
+        <!-- SEÇÃO DO CATÁLOGO DE LIVROS -->
+        <section id="secao-catalogo" class="content-section">
+            <div class="hero-banner">
+                <div class="hero-content">
+                    <h1>Bem-vindo à Library<span class="text-cloud">Clound</span></h1>
+                    <p>Sua estante virtual inteligente com leitor completo, marca-páginas, favoritos e avaliações com estrelas.</p>
+                </div>
+            </div>
+
+            <!-- BARRA DE PESQUISA E FILTROS -->
+            <div class="search-bar-container">
+                <div class="search-input-box">
+                    <span class="search-icon">🔍</span>
+                    <input type="text" id="input-busca" placeholder="Pesquisar por título, autor ou categoria..." oninput="filtrarLivros()">
+                </div>
+
+                <div class="category-filter-box">
+                    <label for="select-categoria">Categoria:</label>
+                    <select id="select-categoria" onchange="filtrarLivros()">
+                        <option value="">Todas as Categorias</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- GRID DE LIVROS -->
+            <div class="section-header">
+                <h2>Acervo Disponível <span id="livros-count-badge" class="badge">0</span></h2>
+            </div>
+            <div id="livros-grid" class="books-grid">
+                <!-- Livros carregados dinamicamente via API -->
+            </div>
+        </section>
+
+        <!-- SEÇÃO DO PAINEL DO ADMINISTRADOR / DONOS DO SITE -->
+        <section id="secao-admin" class="content-section hidden">
+            <div class="admin-header">
+                <div>
+                    <h2>🛠️ Painel do Administrador (LibraryClound)</h2>
+                    <p class="subtitle">Adicione ou modifique livros com conteúdo completo e gerencie leitores.</p>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn btn-primary" onclick="abrirModalLivro('criar')">➕ Adicionar Novo Livro</button>
+                    <button class="btn btn-outline" onclick="alternarPainelAdmin()">Voltar ao Catálogo</button>
+                </div>
+            </div>
+
+            <!-- ABAS DO PAINEL ADMIN -->
+            <div class="tabs-container">
+                <button class="tab-btn active" onclick="trocarAbaAdmin('livros')">📚 Gerenciar Livros</button>
+                <button class="tab-btn" onclick="trocarAbaAdmin('usuarios')">👥 Usuários & Estatísticas</button>
+            </div>
+
+            <!-- TABELA DE LIVROS ADMIN -->
+            <div id="admin-tab-livros" class="admin-tab-content">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Capa</th>
+                                <th>Título</th>
+                                <th>Autor</th>
+                                <th>Categoria</th>
+                                <th>Páginas</th>
+                                <th>Avaliação</th>
+                                <th>Conteúdo</th>
+                                <th>Ações</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-livros-tbody">
+                            <!-- Preenchido via API -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- TABELA DE USUÁRIOS ADMIN -->
+            <div id="admin-tab-usuarios" class="admin-tab-content hidden">
+                <div class="table-responsive">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Foto</th>
+                                <th>Nome Fantasia</th>
+                                <th>Email</th>
+                                <th>Bio (até 150 car.)</th>
+                                <th>Perfil</th>
+                                <th>Livros Lidos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="admin-usuarios-tbody">
+                            <!-- Preenchido via API -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- MODAL DO PERFIL DO USUÁRIO (COM ABA PARA EDITAR E ABA DE FAVORITOS) -->
+    <div id="modal-perfil" class="modal-overlay hidden">
+        <div class="modal-card modal-lg">
+            <button class="modal-close" onclick="fecharModalPerfil()">✕</button>
+
+            <div class="modal-profile-header">
+                <h3>Perfil do Usuário</h3>
+                <p class="modal-subtitle">Gerencie suas informações pessoais e visualize seus livros favoritos</p>
+            </div>
+
+            <!-- ABAS DO PERFIL -->
+            <div class="tabs-container profile-tabs">
+                <button class="tab-btn active" id="tab-btn-dados" onclick="trocarAbaPerfil('dados')">👤 Meus Dados</button>
+                <button class="tab-btn" id="tab-btn-editar" onclick="trocarAbaPerfil('editar')">✏️ Editar Perfil</button>
+                <button class="tab-btn" id="tab-btn-favoritos" onclick="trocarAbaPerfil('favoritos')">❤️ Favoritos <span id="fav-count-badge" class="badge">0</span></button>
+            </div>
+
+            <!-- ABA 1: VISUALIZAÇÃO DE DADOS -->
+            <div id="perfil-tab-dados" class="perfil-tab-content">
+                <div class="profile-card-view">
+                    <div class="profile-avatar-big">
+                        <img id="view-profile-photo" src="" alt="Foto" class="profile-img-big hidden">
+                        <div id="view-profile-initial" class="profile-initial-big">U</div>
+                    </div>
+                    <div class="profile-info-fields">
+                        <h4 id="view-profile-nome">Nome Fantasia</h4>
+                        <span class="user-role-tag" id="view-profile-role">CLIENTE</span>
+                        <p class="profile-email-text" id="view-profile-email">email@exemplo.com</p>
+
+                        <div class="profile-bio-box">
+                            <strong>Sobre mim:</strong>
+                            <p id="view-profile-desc">Nenhuma descrição cadastrada ainda.</p>
+                        </div>
+
+                        <div class="profile-stats-row">
+                            <div class="stat-box">
+                                <span class="stat-number" id="view-profile-lidos">0</span>
+                                <span class="stat-title">Livros Concluídos</span>
+                            </div>
+                            <div class="stat-box">
+                                <span class="stat-number" id="view-profile-favs">0</span>
+                                <span class="stat-title">Favoritados</span>
+                            </div>
+                        </div>
+
+                        <button class="btn btn-primary" onclick="trocarAbaPerfil('editar')">✏️ Editar Meu Perfil</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ABA 2: EDITAR O PRÓPRIO PERFIL -->
+            <!-- "preciso que o usuario tenha uma aba para editar o propio perfil, podendo editar seu nome, por uma foto, criar uma descriçao sobre si de ate 150 caracteres" -->
+            <div id="perfil-tab-editar" class="perfil-tab-content hidden">
+                <form onsubmit="salvarEdicaoPerfil(event)" class="form-container">
+                    <div class="form-group">
+                        <label for="edit-nome-fantasia">Nome Fantasia / Apelido:</label>
+                        <input type="text" id="edit-nome-fantasia" required placeholder="Seu nome ou marca literária">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="edit-foto-url">URL da Foto de Perfil:</label>
+                        <input type="url" id="edit-foto-url" placeholder="https://exemplo.com/sua-foto.jpg" oninput="previsualizarFotoPerfil()">
+                        <small class="field-hint">Cole o link de uma imagem da internet para ser seu avatar.</small>
+                    </div>
+
+                    <!-- Presets Rápidos de Avatar -->
+                    <div class="avatar-presets">
+                        <span>Ou selecione um avatar rápido:</span>
+                        <div class="preset-items">
+                            <img src="https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150" class="preset-img" onclick="selecionarPresetAvatar(this.src)">
+                            <img src="https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150" class="preset-img" onclick="selecionarPresetAvatar(this.src)">
+                            <img src="https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150" class="preset-img" onclick="selecionarPresetAvatar(this.src)">
+                            <img src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150" class="preset-img" onclick="selecionarPresetAvatar(this.src)">
+                        </div>
+                    </div>
+
+                    <!-- Descrição sobre si de até 150 caracteres -->
+                    <div class="form-group">
+                        <div class="label-with-counter">
+                            <label for="edit-descricao">Descrição Sobre Si:</label>
+                            <span id="char-counter" class="char-counter">0 / 150</span>
+                        </div>
+                        <textarea id="edit-descricao" rows="3" maxlength="150"
+                                  placeholder="Escreva um breve resumo sobre seus gostos literários e paixões (máx. 150 caracteres)..."
+                                  oninput="atualizarContadorDescricao()"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-block">💾 Salvar Alterações no Perfil</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ABA 3: MEUS FAVORITOS -->
+            <!-- "uma aba para favoritos(criando assim uma funçao para favoritar os livros e essa funcao deve aparecer no perfil dos usuarios mostrando, nome, categoria e a capa do livro" -->
+            <div id="perfil-tab-favoritos" class="perfil-tab-content hidden">
+                <div class="favorites-header-info">
+                    <p>Aqui estão os livros que você marcou com ❤️ no acervo.</p>
+                </div>
+                <div id="favoritos-grid" class="favorites-grid">
+                    <!-- Cards de favoritos preenchidos via API (mostrando nome, categoria e capa) -->
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODAL DE LEITURA COMPLETA & MARCA-PÁGINAS -->
+    <!-- "os livros devem ter um botao para abrir ele e o admin pode por o conteudo do livro, independente de quantas paginas" -->
+    <!-- "avaliar os livros com a interaçao com estrelas de meia estrela ate 5 estrelas" -->
+    <div id="modal-leitor" class="modal-overlay hidden">
+        <div class="modal-card modal-reader-fullscreen">
+            <button class="modal-close" onclick="fecharModalLeitor()">✕</button>
+
+            <!-- BARRA SUPERIOR DO LEITOR -->
+            <div class="reader-top-bar">
+                <div class="reader-meta">
+                    <span class="badge" id="reader-book-category">Categoria</span>
+                    <h2 id="reader-book-title">Título do Livro</h2>
+                    <span class="reader-author" id="reader-book-author">por Autor</span>
+                </div>
+
+                <!-- CONTROLE DE INTERAÇÃO COM ESTRELAS (0.5 a 5.0) -->
+                <div class="rating-interaction-card">
+                    <span class="rating-label">Sua Avaliação:</span>
+                    <div class="star-rating-container" id="star-rating-widget" title="Clique para avaliar de 0.5 a 5.0 estrelas">
+                        <!-- Gerado dinamicamente com suporte a meia estrela -->
+                    </div>
+                    <span id="star-rating-feedback" class="rating-score-text">Nota: 5.0</span>
+                </div>
+            </div>
+
+            <!-- CORPO DO LEITOR (CONTEÚDO DO LIVRO E MARCA-PÁGINAS) -->
+            <div class="reader-layout">
+
+                <!-- ÁREA DE TEXTO / CONTEÚDO DO LIVRO (INSERIDO PELO ADMIN) -->
+                <div class="reader-content-panel">
+                    <div class="reader-toolbar">
+                        <span class="toolbar-title">📖 Conteúdo da Obra</span>
+                        <div class="toolbar-controls">
+                            <button class="btn btn-sm btn-outline" onclick="ajustarTamanhoFonte(-1)" title="Diminuir fonte">A-</button>
+                            <button class="btn btn-sm btn-outline" onclick="ajustarTamanhoFonte(1)" title="Aumentar fonte">A+</button>
+                            <button class="btn btn-sm btn-outline" id="btn-toggle-favorite-reader" onclick="toggleFavoritoAtual()">
+                                <span id="reader-fav-icon">🤍</span> Favoritar
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- TEXTO REAL DO LIVRO -->
+                    <div id="reader-text-container" class="reader-text-content">
+                        <!-- Conteúdo real do livro inserido pelo admin -->
+                    </div>
+
+                    <!-- FINAL DA LEITURA: BOTÃO SOLICITADO NO TRABALHO -->
+                    <div class="finish-book-section">
+                        <div class="finish-box-card">
+                            <span class="finish-trophy">🏆</span>
+                            <div class="finish-text">
+                                <h4>Chegou ao fim da leitura?</h4>
+                                <p>Clique no botão abaixo para confirmar. Sua contagem de livros lidos no perfil será atualizada imediatamente no SQLite!</p>
+                            </div>
+                            <button id="btn-finalizar-livro" class="btn btn-success btn-lg" onclick="confirmarFinalizacaoLivro()">
+                                🏆 Confirmar que Finalizou o Livro
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PAINEL LATERAL: MARCA-PÁGINAS & DETALHES -->
+                <div class="reader-sidebar-panel">
+                    <img id="reader-book-cover" src="" alt="Capa" class="reader-sidebar-cover">
+
+                    <!-- CAIXA MARCA-PÁGINAS -->
+                    <div class="bookmark-box">
+                        <div class="bookmark-title-row">
+                            <span class="bookmark-icon">🔖</span>
+                            <h4>Marca-Páginas</h4>
+                        </div>
+                        <p class="bookmark-desc">Guarde a página exata onde você pausou.</p>
+
+                        <div class="page-stepper">
+                            <button type="button" class="btn-step" onclick="alterarPaginaAtual(-1)">-1</button>
+                            <div class="page-input-wrapper">
+                                <input type="number" id="reader-current-page" min="1" value="1" oninput="atualizarBarraProgresso()">
+                                <span class="total-pages-span">/ <span id="reader-total-pages">100</span></span>
+                            </div>
+                            <button type="button" class="btn-step" onclick="alterarPaginaAtual(1)">+1</button>
+                        </div>
+
+                        <!-- Barra de Progresso Visual -->
+                        <div class="progress-bar-container">
+                            <div id="reader-progress-bar" class="progress-fill" style="width: 0%;"></div>
+                        </div>
+                        <div class="progress-labels">
+                            <span id="reader-progress-pct">0% lido</span>
+                            <span id="reader-bookmark-timestamp" class="timestamp-label"></span>
+                        </div>
+
+                        <button type="button" class="btn btn-secondary btn-block" onclick="salvarMarcaPaginas()">
+                            💾 Salvar Marca-Páginas
+                        </button>
+                    </div>
+
+                    <!-- SINOPSE -->
+                    <div class="reader-synopsis-card">
+                        <strong>Sinopse:</strong>
+                        <p id="reader-book-synopsis">Texto da sinopse...</p>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL DE CRIAR / EDITAR LIVRO (ADMIN) -->
+    <!-- "o admin pode por o conteudo do livro, independente de quantas paginas" -->
+    <div id="modal-livro" class="modal-overlay hidden">
+        <div class="modal-card modal-lg">
+            <button class="modal-close" onclick="fecharModalLivro()">✕</button>
+            <h3 id="modal-livro-titulo">Adicionar Novo Livro à LibraryClound</h3>
+            <p class="modal-subtitle">Preencha os metadados e o conteúdo textual completo da obra</p>
+
+            <form id="form-livro" onsubmit="salvarLivroAdmin(event)" class="form-container">
+                <input type="hidden" id="livro-id" value="">
+
+                <div class="form-row">
+                    <div class="form-group" style="flex: 2;">
+                        <label for="livro-titulo-input">Título do Livro:</label>
+                        <input type="text" id="livro-titulo-input" required placeholder="Ex: Clean Code">
+                    </div>
+                    <div class="form-group" style="flex: 1.5;">
+                        <label for="livro-autor-input">Autor:</label>
+                        <input type="text" id="livro-autor-input" required placeholder="Ex: Robert C. Martin">
+                    </div>
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="livro-categoria-input">Categoria:</label>
+                        <input type="text" id="livro-categoria-input" required placeholder="Ex: Tecnologia">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="livro-paginas-input">Total de Páginas:</label>
+                        <input type="number" id="livro-paginas-input" required min="1" placeholder="Ex: 464">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="livro-capa-input">URL da Imagem da Capa:</label>
+                    <input type="url" id="livro-capa-input" placeholder="https://exemplo.com/capa.jpg">
+                </div>
+
+                <div class="form-group">
+                    <label for="livro-sinopse-input">Sinopse Breve:</label>
+                    <textarea id="livro-sinopse-input" rows="2" placeholder="Resumo curto para o card..."></textarea>
+                </div>
+
+                <!-- CAMPO ESPECIAL: CONTEÚDO DO LIVRO INSERIDO PELO ADMIN -->
+                <div class="form-group">
+                    <label for="livro-conteudo-input">
+                        📖 Conteúdo do Livro (Capítulos / Texto Completo, sem limite de páginas):
+                    </label>
+                    <textarea id="livro-conteudo-input" rows="8"
+                              placeholder="Digite ou cole aqui os capítulos e o conteúdo do livro completo para que os leitores possam ler na LibraryClound..."></textarea>
+                    <small class="field-hint">💡 O administrador pode inserir todo o texto do livro aqui, sem restrição de tamanho.</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block">Salvar Livro no SQLite</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MODAL DE AUTENTICAÇÃO (LOGIN / CADASTRO) -->
+    <div id="modal-auth" class="modal-overlay hidden">
+        <div class="modal-card">
+            <button class="modal-close" onclick="fecharModalAuth()">✕</button>
+
+            <!-- ABA DE LOGIN -->
+            <div id="auth-login-view">
+                <h3>Acessar Library<span class="highlight-red">Clound</span></h3>
+                <p class="modal-subtitle">Entre com suas credenciais de Leitor ou Administrador</p>
+
+                <form onsubmit="realizarLogin(event)" class="form-container">
+                    <div class="form-group">
+                        <label for="login-email">Email:</label>
+                        <input type="email" id="login-email" required placeholder="ex: leitor@livraria.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="login-senha">Senha:</label>
+                        <input type="password" id="login-senha" required placeholder="Sua senha numérica">
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Entrar</button>
+                </form>
+
+                <div class="auth-switch">
+                    Não possui conta? <a href="#" onclick="alternarAbaAuth('register')">Cadastre-se na LibraryClound</a>
+                </div>
+
+                <div class="quick-credentials">
+                    <p><strong>💡 Contas prontas para demonstração no trabalho:</strong></p>
+                    <small>👑 Dono/Admin: <code>admin@livraria.com</code> / Senha: <code>12345678</code></small><br>
+                    <small>📖 Leitor: <code>leitor@livraria.com</code> / Senha: <code>1234</code></small>
+                </div>
+            </div>
+
+            <!-- ABA DE CADASTRO -->
+            <div id="auth-register-view" class="hidden">
+                <h3>Cadastro na Library<span class="highlight-red">Clound</span></h3>
+                <p class="modal-subtitle">Crie seu perfil de leitor para começar</p>
+
+                <form onsubmit="realizarCadastro(event)" class="form-container">
+                    <div class="form-group">
+                        <label for="reg-nome">Nome Fantasia:</label>
+                        <input type="text" id="reg-nome" required placeholder="Ex: Livraria do Alex">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-email">Email:</label>
+                        <input type="email" id="reg-email" required placeholder="ex: leitor@gmail.com">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg-senha">Senha (Máximo 8 números):</label>
+                        <input type="password" id="reg-senha" required maxlength="8"
+                               pattern="[0-9]{1,8}"
+                               title="A senha deve conter apenas números e no máximo 8 dígitos"
+                               placeholder="Ex: 87654321">
+                        <small class="field-hint">⚠️ Regra do trabalho: apenas números e no máximo 8 dígitos.</small>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-block">Criar Conta</button>
+                </form>
+
+                <div class="auth-switch">
+                    Já possui conta? <a href="#" onclick="alternarAbaAuth('login')">Fazer Login</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SCRIPT DA APLICAÇÃO -->
+    <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,21 @@
+===============================================================
+            ?? ? SISTEMA LIBRARYCLOUND (BACK-END)             
+       Tecnologias: Java 17+, SQLite (JDBC) e API REST         
+===============================================================
+-> Inicializando banco de dados SQLite em: C:\Users\alexs\.gemini\antigravity\scratch\livraria-virtual\livraria.db
+-> Banco SQLite configurado com sucesso para a LibraryClound!
+---------------------------------------------------------------
+? Servidor LibraryClound iniciado com sucesso!
+? Acesse no seu navegador: http://localhost:8080
+---------------------------------------------------------------
+? Credenciais para demonstração:
+   ? Admin/Dono:  admin@livraria.com | Senha: 12345678
+   ? Leitor:      leitor@livraria.com | Senha: 1234
+---------------------------------------------------------------
+? Principais recursos:
+   • Edição de Perfil: Nome, Foto e Descrição (até 150 caracteres)
+   • Favoritos: Salva e exibe no perfil (título, categoria e capa)
+   • Leitor com Conteúdo: Texto completo inserido pelo admin
+   • Avaliações: Sistema de estrelas (de 0.5 até 5.0 estrelas)
+   • Marca-páginas e Botão Finalizar Livro (+1 no perfil)
+===============================================================
