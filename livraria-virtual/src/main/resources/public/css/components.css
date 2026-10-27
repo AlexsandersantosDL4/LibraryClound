@@ -596,6 +596,121 @@
   max-width: 420px;
 }
 
+/* Upload de Arquivos e Dropzone (Avatar e Documentos de Texto) */
+.file-upload-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+.file-upload-input {
+  position: absolute;
+  width: 0.1px;
+  height: 0.1px;
+  opacity: 0;
+  overflow: hidden;
+  z-index: -1;
+}
+
+.file-upload-dropzone {
+  border: 2px dashed var(--border-strong);
+  border-radius: var(--radius-md);
+  padding: 1.5rem 1.25rem;
+  text-align: center;
+  background-color: var(--bg-subtle);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.file-upload-dropzone:hover, .file-upload-dropzone.dragover {
+  border-color: var(--primary);
+  background-color: var(--primary-muted);
+  transform: translateY(-2px);
+}
+
+.upload-icon {
+  font-size: 2rem;
+  color: var(--primary);
+}
+
+.upload-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.upload-text strong {
+  font-size: 0.92rem;
+  color: var(--text-main);
+}
+
+.upload-text small {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+/* Preview de Foto do Usuário */
+.foto-preview-box {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 0.85rem 1.25rem;
+  background-color: var(--bg-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  margin-top: 0.75rem;
+}
+
+.foto-preview-img {
+  width: 64px;
+  height: 64px;
+  border-radius: var(--radius-full);
+  object-fit: cover;
+  border: 2px solid var(--primary);
+  box-shadow: 0 2px 8px var(--primary-glow);
+}
+
+/* Feedback de Importação de Documento de Texto */
+.import-stats-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.85rem 1.25rem;
+  background: linear-gradient(135deg, rgba(22, 163, 74, 0.12), rgba(245, 158, 11, 0.08));
+  border: 1px solid rgba(22, 163, 74, 0.35);
+  border-radius: var(--radius-md);
+  margin-top: 0.75rem;
+  color: var(--success);
+  font-size: 0.88rem;
+  font-weight: 600;
+  animation: fadeIn 250ms ease-out;
+}
+
+.import-stats-icon {
+  font-size: 1.4rem;
+}
+
+.import-stats-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.import-stats-details strong {
+  color: var(--text-main);
+  font-size: 0.92rem;
+}
+
+.import-stats-tags {
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.25rem;
+}
+
 /* Animações */
 @keyframes fadeIn {
   from { opacity: 0; }

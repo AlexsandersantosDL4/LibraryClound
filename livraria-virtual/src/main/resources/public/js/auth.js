@@ -230,12 +230,25 @@ export function abrirModalPerfil(abaInicial = 'dados') {
   const editNome = document.getElementById('edit-nome-fantasia');
   const editFoto = document.getElementById('edit-foto-url');
   const editDesc = document.getElementById('edit-descricao');
+  const inputFile = document.getElementById('edit-foto-file');
+  const previewContainer = document.getElementById('foto-preview-container');
+  const previewImg = document.getElementById('edit-foto-preview');
+  const previewNome = document.getElementById('foto-preview-nome');
 
+  if (inputFile) inputFile.value = '';
   if (editNome) editNome.value = currentUser.nomeFantasia || '';
   if (editFoto) editFoto.value = currentUser.fotoUrl || '';
   if (editDesc) {
     editDesc.value = currentUser.descricao || '';
     atualizarContadorDescricao();
+  }
+
+  if (currentUser.fotoUrl && currentUser.fotoUrl.trim() !== '') {
+    if (previewContainer) previewContainer.classList.remove('hidden');
+    if (previewImg) previewImg.src = currentUser.fotoUrl;
+    if (previewNome) previewNome.textContent = 'Foto atual do perfil';
+  } else {
+    if (previewContainer) previewContainer.classList.add('hidden');
   }
 
   // Abre modal e seleciona a aba
@@ -320,7 +333,120 @@ export function selecionarPresetAvatar(url) {
   const input = document.getElementById('edit-foto-url');
   if (input) {
     input.value = url;
+    atualizarPreviewPorUrl();
     mostrarToast('Avatar selecionado! Clique em salvar para confirmar.', 'info');
+  }
+}
+
+/**
+ * Processa imagem importada diretamente do computador ou celular do usuário
+ */
+export async function processarFotoLocal(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  if (!file.type.startsWith('image/')) {
+    mostrarToast('Por favor, selecione um arquivo de imagem válido (JPG, PNG, WEBP, GIF).', 'warning');
+    return;
+  }
+
+  try {
+    const dataUrl = await comprimirERedimensionarImagem(file, 320, 320, 0.85);
+
+    const inputUrl = document.getElementById('edit-foto-url');
+    if (inputUrl) inputUrl.value = dataUrl;
+
+    const previewContainer = document.getElementById('foto-preview-container');
+    const previewImg = document.getElementById('edit-foto-preview');
+    const previewNome = document.getElementById('foto-preview-nome');
+
+    if (previewContainer) previewContainer.classList.remove('hidden');
+    if (previewImg) previewImg.src = dataUrl;
+    if (previewNome) previewNome.textContent = file.name;
+
+    const viewFoto = document.getElementById('view-profile-photo');
+    const viewInit = document.getElementById('view-profile-initial');
+    if (viewFoto && viewInit) {
+      viewFoto.src = dataUrl;
+      viewFoto.classList.remove('hidden');
+      viewInit.classList.add('hidden');
+    }
+
+    mostrarToast('📷 Foto importada do seu dispositivo! Clique em "Salvar Alterações" para gravar.', 'info');
+  } catch (err) {
+    console.error('Erro ao processar imagem:', err);
+    mostrarToast('Não foi possível ler a imagem selecionada.', 'error');
+  }
+}
+
+function comprimirERedimensionarImagem(file, maxLargura, maxAltura, qualidade) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onload = () => {
+        let width = img.width;
+        let height = img.height;
+
+        if (width > height) {
+          if (width > maxLargura) {
+            height = Math.round((height * maxLargura) / width);
+            width = maxLargura;
+          }
+        } else {
+          if (height > maxAltura) {
+            width = Math.round((width * maxAltura) / height);
+            height = maxAltura;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', qualidade));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+export function removerFotoPreview() {
+  const inputUrl = document.getElementById('edit-foto-url');
+  const inputFile = document.getElementById('edit-foto-file');
+  const previewContainer = document.getElementById('foto-preview-container');
+  const previewImg = document.getElementById('edit-foto-preview');
+
+  if (inputUrl) inputUrl.value = '';
+  if (inputFile) inputFile.value = '';
+  if (previewContainer) previewContainer.classList.add('hidden');
+  if (previewImg) previewImg.src = '';
+
+  const viewFoto = document.getElementById('view-profile-photo');
+  const viewInit = document.getElementById('view-profile-initial');
+  if (viewFoto && viewInit) {
+    viewFoto.classList.add('hidden');
+    viewInit.classList.remove('hidden');
+  }
+}
+
+export function atualizarPreviewPorUrl() {
+  const inputUrl = document.getElementById('edit-foto-url');
+  const url = inputUrl ? inputUrl.value.trim() : '';
+  const previewContainer = document.getElementById('foto-preview-container');
+  const previewImg = document.getElementById('edit-foto-preview');
+  const previewNome = document.getElementById('foto-preview-nome');
+
+  if (url) {
+    if (previewContainer) previewContainer.classList.remove('hidden');
+    if (previewImg) previewImg.src = url;
+    if (previewNome) previewNome.textContent = 'Imagem por Link Externo';
+  } else {
+    if (previewContainer) previewContainer.classList.add('hidden');
   }
 }
 

@@ -9,7 +9,9 @@ import { getCurrentUser, sincronizarPerfil } from './auth.js';
 import { mostrarToast, abrirModal, fecharModal } from './ui.js';
 
 let livroAtivo = null;
-let paginasLivro = [];
+let capitulosLivro = [];
+let capituloAtual = 1;
+let totalCapitulos = 1;
 let paginaAtual = 1;
 let totalPaginas = 1;
 let bookmarkSalvo = null;
@@ -29,7 +31,7 @@ export async function abrirLeitor(livroId) {
 
     livroAtivo = livro;
     configurarCabecalhoLeitor(livro);
-    processarPaginacao(livro);
+    processarCapitulosEPaginacao(livro);
 
     // Carrega progresso/marca-página do usuário se logado
     const user = getCurrentUser();
@@ -37,6 +39,7 @@ export async function abrirLeitor(livroId) {
       await carregarMarcaPagina(livroId);
       await carregarAvaliacaoUsuario(livroId);
     } else {
+      capituloAtual = 1;
       paginaAtual = 1;
       atualizarExibicaoPagina();
     }
@@ -73,113 +76,194 @@ function configurarCabecalhoLeitor(livro) {
 }
 
 /**
- * Algoritmo de Paginação Inteligente:
- * Divide o conteúdo do livro em páginas virtuais respeitando quebras de parágrafos.
+ * Algoritmo de Detecção e Segmentação de Capítulos:
+ * Permite que ao mudar de página o livro pule para o próximo capítulo.
  */
-function processarPaginacao(livro) {
+function processarCapitulosEPaginacao(livro) {
   const conteudo = livro.conteudo || livro.sinopse || 'Este livro ainda não possui texto completo cadastrado pelo administrador.';
-  
-  // 1. Verifica se existem marcadores explícitos de página
-  if (conteudo.includes('---PÁGINA---') || conteudo.includes('\f')) {
-    const separador = conteudo.includes('---PÁGINA---') ? '---PÁGINA---' : '\f';
-    paginasLivro = conteudo.split(separador).map(p => p.trim()).filter(p => p.length > 0);
+  capitulosLivro = [];
+
+  // 1. Verifica marcadores explícitos: ---CAPÍTULO--- ou ---CAPITULO---
+  if (conteudo.includes('---CAPÍTULO---') || conteudo.includes('---CAPITULO---')) {
+    const separador = conteudo.includes('---CAPÍTULO---') ? '---CAPÍTULO---' : '---CAPITULO---';
+    const blocos = conteudo.split(separador).map(b => b.trim()).filter(Boolean);
+    blocos.forEach((bloco, idx) => {
+      const linhas = bloco.split('\n');
+      const primeiraLinha = linhas[0].replace(/^[#\s*_-]+/, '').trim();
+      const titulo = (primeiraLinha.length > 0 && primeiraLinha.length < 80)
+        ? primeiraLinha
+        : `Capítulo ${idx + 1}`;
+      const corpo = (primeiraLinha === titulo && linhas.length > 1)
+        ? linhas.slice(1).join('\n').trim()
+        : bloco;
+
+      capitulosLivro.push({
+        index: idx + 1,
+        titulo: (titulo.startsWith('Capítulo') || titulo.startsWith('Capitulo')) ? titulo : `Capítulo ${idx + 1}: ${titulo}`,
+        conteudo: corpo
+      });
+    });
   } else {
-    // 2. Divisão por parágrafos com agrupamento em páginas de aprox. 1.400 caracteres
-    const paragrafos = conteudo.split(/\n\s*\n/);
-    const paginas = [];
-    let blocoAtual = '';
+    // 2. Busca padrões de cabeçalho de capítulos via Expressão Regular
+    const regexCapitulo = /(?:^|\n)(?:#{1,3}\s*)?(?:Cap[ií]tulo|Chapter|PARTE)\s+([0-9IVXLCDM\w]+)(?:[:\.\s\-–—]+([^\n]*))?/gi;
+    const matches = [...conteudo.matchAll(regexCapitulo)];
 
-    for (const p of paragrafos) {
-      const pLimpo = p.trim();
-      if (!pLimpo) continue;
+    if (matches.length > 1) {
+      for (let i = 0; i < matches.length; i++) {
+        const match = matches[i];
+        const startPos = match.index + (match[0].startsWith('\n') ? 1 : 0);
+        const endPos = (i + 1 < matches.length) ? matches[i + 1].index : conteudo.length;
+        const textoCap = conteudo.substring(startPos, endPos).trim();
 
-      if ((blocoAtual.length + pLimpo.length > 1400) && blocoAtual.length > 0) {
-        paginas.push(blocoAtual.trim());
-        blocoAtual = pLimpo + '\n\n';
-      } else {
-        blocoAtual += pLimpo + '\n\n';
+        const numCap = match[1] || `${i + 1}`;
+        const subTitulo = match[2] ? `: ${match[2].trim()}` : '';
+        const tituloCompleto = `Capítulo ${numCap}${subTitulo}`;
+
+        capitulosLivro.push({
+          index: i + 1,
+          titulo: tituloCompleto,
+          conteudo: textoCap
+        });
+      }
+    } else {
+      // 3. Se não houver cabeçalhos explícitos, particiona em capítulos legíveis (~2.500 car. cada)
+      const paragrafos = conteudo.split(/\n\s*\n/);
+      let blocoAtual = '';
+      let capIdx = 1;
+
+      for (const p of paragrafos) {
+        const pLimpo = p.trim();
+        if (!pLimpo) continue;
+
+        if ((blocoAtual.length + pLimpo.length > 2500) && blocoAtual.length > 0) {
+          capitulosLivro.push({
+            index: capIdx,
+            titulo: `Capítulo ${capIdx}`,
+            conteudo: blocoAtual.trim()
+          });
+          capIdx++;
+          blocoAtual = pLimpo + '\n\n';
+        } else {
+          blocoAtual += pLimpo + '\n\n';
+        }
+      }
+
+      if (blocoAtual.trim().length > 0) {
+        capitulosLivro.push({
+          index: capIdx,
+          titulo: `Capítulo ${capIdx}`,
+          conteudo: blocoAtual.trim()
+        });
       }
     }
-
-    if (blocoAtual.trim().length > 0) {
-      paginas.push(blocoAtual.trim());
-    }
-
-    paginasLivro = paginas.length > 0 ? paginas : [conteudo];
   }
 
-  totalPaginas = Math.max(paginasLivro.length, livro.totalPaginas || 1);
+  if (capitulosLivro.length === 0) {
+    capitulosLivro.push({
+      index: 1,
+      titulo: 'Capítulo 1: Início',
+      conteudo: conteudo
+    });
+  }
+
+  totalCapitulos = capitulosLivro.length;
+  totalPaginas = totalCapitulos;
+  popularDropdownCapitulos();
+}
+
+function popularDropdownCapitulos() {
+  const select = document.getElementById('reader-chapter-select');
+  if (!select) return;
+
+  select.innerHTML = capitulosLivro.map(cap => `
+    <option value="${cap.index}">${escapeHtml(cap.titulo)}</option>
+  `).join('');
 }
 
 /**
- * Atualiza o texto exibido no leitor para a página atual
+ * Atualiza o texto exibido no leitor para o capítulo atual
  */
 export function atualizarExibicaoPagina() {
   const container = document.getElementById('reader-text-container');
-  const elPaginaAtual = document.getElementById('reader-current-page');
-  const elTotalPaginas = document.getElementById('reader-total-pages');
+  const select = document.getElementById('reader-chapter-select');
+  const counterText = document.getElementById('reader-chapter-counter-text');
   const elBarra = document.getElementById('reader-progress-bar');
   const elProgressoPct = document.getElementById('reader-progress-pct');
-  const btnFinalizar = document.getElementById('btn-finalizar-livro');
   const finishSection = document.querySelector('.finish-book-section');
 
   if (!container) return;
 
-  // Garante limites válidos
-  if (paginaAtual < 1) paginaAtual = 1;
-  if (paginaAtual > totalPaginas) paginaAtual = totalPaginas;
+  // Garante limites válidos para os capítulos
+  if (capituloAtual < 1) capituloAtual = 1;
+  if (capituloAtual > totalCapitulos) capituloAtual = totalCapitulos;
+  paginaAtual = capituloAtual;
 
-  // Obtém texto da página correspondente
-  const indexPagina = Math.min(paginaAtual - 1, paginasLivro.length - 1);
-  const textoPagina = paginasLivro[indexPagina] || 'Fim do conteúdo disponível.';
+  const cap = capitulosLivro[capituloAtual - 1] || capitulosLivro[0];
+  const textoCapitulo = cap.conteudo || 'Fim do conteúdo deste capítulo.';
 
-  // Formata em parágrafos HTML seguros
-  const paragrafosHtml = textoPagina
+  // Formata os parágrafos do capítulo
+  const paragrafosHtml = textoCapitulo
     .split(/\n+/)
     .map(p => `<p>${escapeHtml(p.trim())}</p>`)
     .join('');
 
   container.innerHTML = `
-    <div class="reader-page-header">Página ${paginaAtual} de ${totalPaginas}</div>
+    <div class="reader-chapter-header">
+      <span class="reader-chapter-badge">Capítulo ${cap.index} de ${totalCapitulos}</span>
+      <h3 class="reader-chapter-title-large">${escapeHtml(cap.titulo)}</h3>
+    </div>
     ${paragrafosHtml}
   `;
 
-  // Atualiza controles numéricos e barra de progresso
-  if (elPaginaAtual) elPaginaAtual.value = paginaAtual;
-  if (elTotalPaginas) elTotalPaginas.textContent = totalPaginas;
+  // Sincroniza controles de interface
+  if (select) select.value = capituloAtual;
+  if (counterText) counterText.textContent = `Capítulo ${capituloAtual} de ${totalCapitulos}`;
 
-  const pct = Math.min(100, Math.round((paginaAtual / totalPaginas) * 100));
+  const pct = Math.min(100, Math.round((capituloAtual / totalCapitulos) * 100));
   if (elBarra) elBarra.style.width = `${pct}%`;
-  if (elProgressoPct) elProgressoPct.textContent = `${pct}% lido`;
+  if (elProgressoPct) elProgressoPct.textContent = `${pct}% lido (${capituloAtual}/${totalCapitulos} caps)`;
 
-  // Exibe o botão de confirmação de finalização em destaque se estiver no final
   if (finishSection) {
-    if (paginaAtual === totalPaginas || pct >= 95) {
-      finishSection.style.display = 'block';
-    } else {
-      finishSection.style.display = 'block'; // Sempre visível para conveniência do leitor
-    }
+    finishSection.style.display = 'block';
   }
 
-  // Rola texto para o topo ao mudar de página
+  // Rola painel para o topo
   const panel = document.querySelector('.reader-content-panel');
   if (panel) panel.scrollTop = 0;
 }
 
-export function mudarPagina(delta) {
-  const nova = paginaAtual + delta;
-  if (nova >= 1 && nova <= totalPaginas) {
-    paginaAtual = nova;
+/**
+ * Avança ou recua diretamente entre os capítulos ao mudar de página
+ */
+export function mudarCapitulo(delta) {
+  const novo = capituloAtual + delta;
+  if (novo >= 1 && novo <= totalCapitulos) {
+    capituloAtual = novo;
+    paginaAtual = capituloAtual;
+    atualizarExibicaoPagina();
+  } else if (novo > totalCapitulos) {
+    mostrarToast('Você já está no último capítulo desta obra!', 'info');
+  } else if (novo < 1) {
+    mostrarToast('Você já está no primeiro capítulo.', 'info');
+  }
+}
+
+export function selecionarCapituloDropdown(val) {
+  const n = parseInt(val, 10);
+  if (!isNaN(n) && n >= 1 && n <= totalCapitulos) {
+    capituloAtual = n;
+    paginaAtual = capituloAtual;
     atualizarExibicaoPagina();
   }
 }
 
+// Mantém compatibilidade com atalhos de mudar página chamando mudarCapitulo
+export function mudarPagina(delta) {
+  mudarCapitulo(delta);
+}
+
 export function irParaPagina(num) {
-  const n = parseInt(num, 10);
-  if (!isNaN(n) && n >= 1 && n <= totalPaginas) {
-    paginaAtual = n;
-    atualizarExibicaoPagina();
-  }
+  selecionarCapituloDropdown(num);
 }
 
 /**
@@ -188,6 +272,21 @@ export function irParaPagina(num) {
 async function carregarMarcaPagina(livroId) {
   try {
     const res = await apiFetch(`/api/leitura/marcapagina?livroId=${livroId}`);
+    if (res && res.paginaAtual) {
+      capituloAtual = res.paginaAtual;
+      paginaAtual = capituloAtual;
+      bookmarkSalvo = res;
+      mostrarTimestampMarcaPagina(res.atualizadoEm);
+    } else {
+      capituloAtual = 1;
+      paginaAtual = 1;
+    }
+  } catch (e) {
+    capituloAtual = 1;
+    paginaAtual = 1;
+  }
+  atualizarExibicaoPagina();
+}
     if (res && res.paginaAtual) {
       paginaAtual = res.paginaAtual;
       bookmarkSalvo = res;

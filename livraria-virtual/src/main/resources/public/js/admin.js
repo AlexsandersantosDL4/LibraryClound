@@ -159,6 +159,11 @@ export async function abrirModalLivro(modo, livroId = null) {
 
   if (form) form.reset();
 
+  const statsBox = document.getElementById('import-stats-box');
+  const fileInput = document.getElementById('livro-documento-file');
+  if (statsBox) statsBox.classList.add('hidden');
+  if (fileInput) fileInput.value = '';
+
   if (modo === 'editar' && livroId) {
     if (tituloModal) tituloModal.textContent = 'Editar Obra na LibraryClound';
     try {
@@ -279,4 +284,94 @@ export function trocarAbaAdmin(aba) {
       btn.classList.remove('active');
     }
   });
+}
+
+/**
+ * Importa um documento de texto (.txt ou .md) do computador do administrador,
+ * adaptando a formatação por capítulos e calculando automaticamente o total de páginas.
+ */
+export async function importarDocumentoTexto(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+
+  try {
+    const rawText = await lerArquivoComoTexto(file);
+    if (!rawText || rawText.trim().length === 0) {
+      mostrarToast('O arquivo selecionado está vazio.', 'warning');
+      return;
+    }
+
+    // 1. Normaliza quebras de linha e remove caracteres indesejados
+    let texto = rawText.replace(/\r\n/g, '\n').replace(/\r/g, '\n').replace(/^\uFEFF/, '').trim();
+
+    // 2. Extrai ou infere o título se o campo estiver vazio
+    const inputTitulo = document.getElementById('livro-titulo-input');
+    if (inputTitulo && (!inputTitulo.value || inputTitulo.value.trim() === '')) {
+      const nomeBase = file.name.replace(/\.[^/.]+$/, '').replace(/[_-]/g, ' ');
+      const primeiraLinha = texto.split('\n')[0].replace(/^[#\s*_-]+/, '').trim();
+      if (primeiraLinha.length > 2 && primeiraLinha.length < 70 && !primeiraLinha.toLowerCase().startsWith('capítulo') && !primeiraLinha.toLowerCase().startsWith('capitulo')) {
+        inputTitulo.value = primeiraLinha;
+      } else {
+        inputTitulo.value = capitalizarPalavras(nomeBase);
+      }
+    }
+
+    // 3. Adaptação da formatação e identificação de capítulos
+    const regexCapitulos = /(?:^|\n)(?:#{1,3}\s*)?(?:Cap[ií]tulo|Chapter|PARTE)\s+([0-9IVXLCDM\w]+)(?:[:\.\s\-–—]+([^\n]*))?/gi;
+    const matches = [...texto.matchAll(regexCapitulos)];
+    let capitulosDetectados = matches.length;
+
+    let textoFormatado = texto;
+
+    if (capitulosDetectados > 1) {
+      textoFormatado = texto.replace(/(?:^|\n)((?:#{1,3}\s*)?(?:Cap[ií]tulo|Chapter|PARTE)\s+[0-9IVXLCDM\w]+[^\n]*)/gi, '\n\n---CAPÍTULO---\n\n$1');
+      textoFormatado = textoFormatado.replace(/^\s*---CAPÍTULO---\s*/, '').trim();
+    } else {
+      capitulosDetectados = Math.max(1, Math.round(texto.length / 3000));
+    }
+
+    // 4. Detecção e cálculo automático da quantidade de páginas
+    // Padrão editorial: ~260 palavras por página impressa
+    const palavras = textoFormatado.trim().split(/\s+/).filter(Boolean).length;
+    const paginasCalculadas = Math.max(1, Math.round(palavras / 260));
+
+    // 5. Preenche os campos do formulário
+    const inputPaginas = document.getElementById('livro-paginas-input');
+    const inputConteudo = document.getElementById('livro-conteudo-input');
+
+    if (inputPaginas) inputPaginas.value = paginasCalculadas;
+    if (inputConteudo) inputConteudo.value = textoFormatado;
+
+    // 6. Atualiza o badge de estatísticas do arquivo importado
+    const statsBox = document.getElementById('import-stats-box');
+    const statsFilename = document.getElementById('import-stats-filename');
+    const statsPaginas = document.getElementById('import-stats-paginas');
+    const statsCapitulos = document.getElementById('import-stats-capitulos');
+    const statsPalavras = document.getElementById('import-stats-palavras');
+
+    if (statsBox) statsBox.classList.remove('hidden');
+    if (statsFilename) statsFilename.textContent = `Arquivo: ${file.name}`;
+    if (statsPaginas) statsPaginas.textContent = `${paginasCalculadas} páginas calculadas`;
+    if (statsCapitulos) statsCapitulos.textContent = `${capitulosDetectados} capítulos identificados`;
+    if (statsPalavras) statsPalavras.textContent = `${palavras.toLocaleString('pt-BR')} palavras`;
+
+    mostrarToast(`✓ Documento adaptado! Detectadas ${paginasCalculadas} páginas e ${capitulosDetectados} capítulos.`, 'success');
+
+  } catch (err) {
+    console.error('Erro ao importar documento de texto:', err);
+    mostrarToast('Não foi possível ler o arquivo de texto.', 'error');
+  }
+}
+
+function lerArquivoComoTexto(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = (e) => reject(e);
+    reader.readAsText(file, 'UTF-8');
+  });
+}
+
+function capitalizarPalavras(str) {
+  return str.replace(/\b\w/g, l => l.toUpperCase());
 }

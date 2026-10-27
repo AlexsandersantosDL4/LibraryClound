@@ -169,7 +169,7 @@
   box-shadow: var(--shadow-sm);
 }
 
-/* Controles de Paginação */
+/* Controles de Paginação e Navegação entre Capítulos */
 .reader-pagination-bar {
   display: flex;
   align-items: center;
@@ -177,18 +177,70 @@
   padding: 0.75rem 2rem;
   border-bottom: 1px solid var(--border-subtle);
   background-color: var(--bg-surface);
+  flex-wrap: wrap;
+  gap: 0.75rem;
 }
 
 .page-nav-group {
   display: flex;
   align-items: center;
   gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.reader-chapter-select {
+  padding: 0.4rem 0.85rem;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-subtle);
+  background-color: var(--bg-subtle);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--text-main);
+  cursor: pointer;
+  max-width: 260px;
+  text-overflow: ellipsis;
+}
+
+.reader-chapter-select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px var(--primary-muted);
 }
 
 .page-indicator-text {
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   font-weight: 700;
-  color: var(--text-main);
+  color: var(--text-muted);
+}
+
+/* Banner de Capítulo no Topo do Texto */
+.reader-chapter-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1rem;
+  border-bottom: 2px solid var(--border-subtle);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.reader-chapter-badge {
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
+  background-color: var(--primary-muted);
+  padding: 0.2rem 0.65rem;
+  border-radius: var(--radius-full);
+  align-self: flex-start;
+}
+
+.reader-chapter-title-large {
+  font-size: 1.6rem;
+  font-weight: 800;
+  line-height: 1.25;
+  color: inherit;
+  margin: 0;
 }
 
 /* TEMAS ESPECÍFICOS DE LEITURA */

@@ -15,6 +15,9 @@ import {
   salvarEdicaoPerfil,
   atualizarContadorDescricao,
   selecionarPresetAvatar,
+  processarFotoLocal,
+  removerFotoPreview,
+  atualizarPreviewPorUrl,
   abrirModalAuth,
   alternarAbaAuth
 } from './auth.js';
@@ -29,6 +32,8 @@ import {
   abrirLeitor,
   fecharLeitor,
   mudarPagina,
+  mudarCapitulo,
+  selecionarCapituloDropdown,
   irParaPagina,
   salvarMarcaPaginas,
   confirmarFinalizacaoLivro,
@@ -42,6 +47,7 @@ import {
   fecharModalLivro,
   salvarLivroAdmin,
   excluirLivroAdmin,
+  importarDocumentoTexto,
   trocarAbaAdmin
 } from './admin.js';
 
@@ -119,13 +125,18 @@ window.trocarAbaPerfil = selecionarAbaPerfil;
 window.salvarEdicaoPerfil = salvarEdicaoPerfil;
 window.atualizarContadorDescricao = atualizarContadorDescricao;
 window.selecionarPresetAvatar = selecionarPresetAvatar;
+window.processarFotoLocal = processarFotoLocal;
+window.removerFotoPreview = removerFotoPreview;
+window.atualizarPreviewPorUrl = atualizarPreviewPorUrl;
 
 window.filtrarLivros = filtrarLivros;
 window.alternarFavorito = alternarFavorito;
 
 window.abrirLeitor = abrirLeitor;
 window.fecharModalLeitor = fecharLeitor;
-window.alterarPaginaAtual = mudarPagina;
+window.alterarPaginaAtual = mudarCapitulo;
+window.mudarCapitulo = mudarCapitulo;
+window.selecionarCapituloDropdown = selecionarCapituloDropdown;
 window.atualizarBarraProgresso = () => {
   const input = document.getElementById('reader-current-page');
   if (input) irParaPagina(input.value);
@@ -141,4 +152,5 @@ window.abrirModalLivro = abrirModalLivro;
 window.fecharModalLivro = fecharModalLivro;
 window.salvarLivroAdmin = salvarLivroAdmin;
 window.excluirLivroAdmin = excluirLivroAdmin;
+window.importarDocumentoTexto = importarDocumentoTexto;
 window.trocarAbaAdmin = trocarAbaAdmin;

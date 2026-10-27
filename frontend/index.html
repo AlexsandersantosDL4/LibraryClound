@@ -253,10 +253,35 @@
             <input type="text" id="edit-nome-fantasia" required placeholder="Seu nome ou marca literária">
           </div>
 
+          <!-- Importação de Imagem do Dispositivo do Usuário -->
           <div class="form-group">
-            <label for="edit-foto-url">URL da Foto de Perfil:</label>
-            <input type="url" id="edit-foto-url" placeholder="https://exemplo.com/sua-foto.jpg">
-            <small class="field-hint">Cole o link público de uma imagem para ser seu avatar.</small>
+            <label for="edit-foto-file">Foto de Perfil (Importar Imagem do seu Dispositivo):</label>
+            <div class="file-upload-wrapper">
+              <input type="file" id="edit-foto-file" accept="image/*" class="file-upload-input" onchange="processarFotoLocal(event)">
+              <div class="file-upload-dropzone" onclick="document.getElementById('edit-foto-file').click()" title="Clique para escolher uma imagem do seu computador ou celular">
+                <span class="upload-icon">📷</span>
+                <div class="upload-text">
+                  <strong>Clique aqui para escolher uma foto do seu dispositivo</strong>
+                  <small>Formatos aceitos: JPG, PNG, WEBP ou GIF (será otimizada automaticamente)</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Preview da Foto Escolhida -->
+            <div id="foto-preview-container" class="foto-preview-box hidden">
+              <img id="edit-foto-preview" src="" alt="Pré-visualização da Foto" class="foto-preview-img">
+              <div style="flex: 1;">
+                <strong style="display: block; font-size: 0.9rem;" id="foto-preview-nome">Foto selecionada</strong>
+                <small style="color: var(--text-muted);">Esta foto será exibida no seu perfil e cabeçalho.</small>
+              </div>
+              <button type="button" class="btn btn-sm btn-ghost" onclick="removerFotoPreview()">✕ Remover</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="edit-foto-url">Ou informe a URL de uma Imagem Externa:</label>
+            <input type="url" id="edit-foto-url" placeholder="https://exemplo.com/sua-foto.jpg" oninput="atualizarPreviewPorUrl()">
+            <small class="field-hint">Cole o link público de uma imagem ou utilize o campo acima para importar do seu computador.</small>
           </div>
 
           <!-- Presets Rápidos de Avatar -->
@@ -346,18 +371,27 @@
 
           </div>
 
-          <!-- Barra de Navegação de Páginas -->
+          <!-- Barra de Navegação de Capítulos e Páginas -->
           <div class="reader-pagination-bar">
             <div class="page-nav-group">
-              <button type="button" class="btn btn-sm btn-outline" onclick="alterarPaginaAtual(-1)" title="Página Anterior (Seta Esquerda)">← Anterior</button>
-              <span class="page-indicator-text">Página</span>
-              <div class="page-input-wrapper">
-                <input type="number" id="reader-current-page" min="1" value="1" onchange="atualizarBarraProgresso()">
-                <span class="total-pages-span">/ <span id="reader-total-pages">1</span></span>
-              </div>
-              <button type="button" class="btn btn-sm btn-outline" onclick="alterarPaginaAtual(1)" title="Próxima Página (Seta Direita)">Próxima →</button>
+              <button type="button" class="btn btn-sm btn-outline" onclick="alterarPaginaAtual(-1)" title="Capítulo Anterior (Seta Esquerda)">
+                ← Capítulo Anterior
+              </button>
+              
+              <!-- Seletor Rápido de Capítulos -->
+              <select id="reader-chapter-select" class="reader-chapter-select" onchange="selecionarCapituloDropdown(this.value)" title="Ir diretamente para um capítulo">
+                <option value="1">Capítulo 1</option>
+              </select>
+
+              <button type="button" class="btn btn-sm btn-primary" onclick="alterarPaginaAtual(1)" title="Próximo Capítulo (Seta Direita)">
+                Próximo Capítulo →
+              </button>
             </div>
-            <button type="button" class="btn btn-sm btn-outline" onclick="salvarMarcaPaginas()">🔖 Salvar Marca-Páginas</button>
+
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <span class="page-indicator-text" id="reader-chapter-counter-text">Capítulo 1 de 1</span>
+              <button type="button" class="btn btn-sm btn-outline" onclick="salvarMarcaPaginas()">🔖 Salvar Marca-Páginas</button>
+            </div>
           </div>
 
           <!-- Conteúdo Textual da Página -->
@@ -458,6 +492,36 @@
         <div class="form-group">
           <label for="livro-sinopse-input">Sinopse Breve:</label>
           <textarea id="livro-sinopse-input" rows="2" placeholder="Resumo para exibição no catálogo..."></textarea>
+        </div>
+
+        <!-- Importar Documento de Texto com Detecção Automática de Páginas e Formatação -->
+        <div class="form-group document-import-group">
+          <label for="livro-documento-file">
+            📄 Importar Documento de Texto (.txt, .md) com Detecção Automática de Páginas:
+          </label>
+          <div class="file-upload-wrapper">
+            <input type="file" id="livro-documento-file" accept=".txt,.md,.text" class="file-upload-input" onchange="importarDocumentoTexto(event)">
+            <div class="file-upload-dropzone" onclick="document.getElementById('livro-documento-file').click()" title="Clique para importar um arquivo de texto do seu computador">
+              <span class="upload-icon">📂</span>
+              <div class="upload-text">
+                <strong>Clique ou arraste um arquivo de texto (.txt ou .md) para importar</strong>
+                <small>O sistema adaptará a formatação dos capítulos e detectará o total de páginas automaticamente!</small>
+              </div>
+            </div>
+          </div>
+
+          <!-- Feedback com estatísticas do documento importado -->
+          <div id="import-stats-box" class="import-stats-badge hidden">
+            <span class="import-stats-icon">✓</span>
+            <div class="import-stats-details">
+              <strong id="import-stats-filename">documento.txt</strong>
+              <div class="import-stats-tags">
+                <span class="badge badge-primary" id="import-stats-paginas">0 páginas calculadas</span>
+                <span class="badge badge-gold" id="import-stats-capitulos">0 capítulos identificados</span>
+                <span class="badge" id="import-stats-palavras">0 palavras</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Conteúdo Completo do Livro (sem limite de páginas) -->
