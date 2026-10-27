@@ -1,70 +1,108 @@
 package com.livraria.util;
 
-import java.util.HashMap;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+
+import java.io.IOException;
+import java.util.Collections;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 
 /**
- * Utilitário leve em Java puro para manipulação de JSON.
+ * Utilitário de alto desempenho para serialização e desserialização JSON
+ * baseado no Jackson Databind, com suporte a Records do Java 21 e datas JavaTime.
  */
 public class JsonHelper {
 
-    public static Map<String, String> parseJson(String json) {
-        Map<String, String> map = new HashMap<>();
-        if (json == null || json.trim().isEmpty()) {
-            return map;
-        }
+    private static final ObjectMapper MAPPER = new ObjectMapper();
 
-        String content = json.trim();
-        if (content.startsWith("{")) content = content.substring(1);
-        if (content.endsWith("}")) content = content.substring(0, content.length() - 1);
-
-        Pattern pattern = Pattern.compile("\"([^\"]+)\"\\s*:\\s*(\"[^\"]*\"|true|false|null|-?\\d+(?:\\.\\d+)?)");
-        Matcher matcher = pattern.matcher(content);
-
-        while (matcher.find()) {
-            String key = matcher.group(1);
-            String rawVal = matcher.group(2).trim();
-
-            if (rawVal.startsWith("\"") && rawVal.endsWith("\"")) {
-                String unquoted = rawVal.substring(1, rawVal.length() - 1);
-                unquoted = unquoted.replace("\\\"", "\"").replace("\\\\", "\\").replace("\\n", "\n").replace("\\r", "\r");
-                map.put(key, unquoted);
-            } else if ("null".equalsIgnoreCase(rawVal)) {
-                map.put(key, null);
-            } else {
-                map.put(key, rawVal);
-            }
-        }
-        return map;
+    static {
+        MAPPER.registerModule(new JavaTimeModule());
+        MAPPER.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        MAPPER.disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES);
     }
 
-    public static String getString(Map<String, String> map, String key, String defaultValue) {
-        if (!map.containsKey(key) || map.get(key) == null) {
+    public static ObjectMapper getMapper() {
+        return MAPPER;
+    }
+
+    public static String toJson(Object obj) {
+        if (obj == null) return "null";
+        try {
+            return MAPPER.writeValueAsString(obj);
+        } catch (JsonProcessingException e) {
+            throw new RuntimeException("Erro ao serializar objeto para JSON: " + e.getMessage(), e);
+        }
+    }
+
+    public static <T> T fromJson(String json, Class<T> clazz) {
+        if (json == null || json.isBlank()) return null;
+        try {
+            return MAPPER.readValue(json, clazz);
+        } catch (IOException e) {
+            throw new RuntimeException("Erro ao desserializar JSON para " + clazz.getSimpleName() + ": " + e.getMessage(), e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static Map<String, Object> parseJson(String json) {
+        if (json == null || json.isBlank()) return Collections.emptyMap();
+        try {
+            return MAPPER.readValue(json, Map.class);
+        } catch (Exception e) {
+            return Collections.emptyMap();
+        }
+    }
+
+    public static String getString(Map<String, ?> map, String key, String defaultValue) {
+        if (map == null || !map.containsKey(key) || map.get(key) == null) {
             return defaultValue;
         }
-        return map.get(key).trim();
+        return String.valueOf(map.get(key)).trim();
     }
 
-    public static int getInt(Map<String, String> map, String key, int defaultValue) {
-        try {
-            if (map.containsKey(key) && map.get(key) != null) {
-                return Integer.parseInt(map.get(key).trim());
-            }
-        } catch (NumberFormatException ignored) {
+    public static int getInt(Map<String, ?> map, String key, int defaultValue) {
+        if (map == null || !map.containsKey(key) || map.get(key) == null) {
+            return defaultValue;
         }
-        return defaultValue;
+        Object val = map.get(key);
+        if (val instanceof Number num) {
+            return num.intValue();
+        }
+        try {
+            return Integer.parseInt(String.valueOf(val).trim());
+        } catch (NumberFormatException ignored) {
+            return defaultValue;
+        }
+    }
+
+    public static double getDouble(Map<String, ?> map, String key, double defaultValue) {
+        if (map == null || !map.containsKey(key) || map.get(key) == null) {
+            return defaultValue;
+        }
+        Object val = map.get(key);
+        if (val instanceof Number num) {
+            return num.doubleValue();
+        }
+        try {
+            return Double.parseDouble(String.valueOf(val).trim());
+        } catch (NumberFormatException ignored) {
+            return defaultValue;
+        }
     }
 
     public static String escape(String str) {
         if (str == null) return "";
-        return str.replace("\\", "\\\\")
-                  .replace("\"", "\\\"")
-                  .replace("\b", "\\b")
-                  .replace("\f", "\\f")
-                  .replace("\n", "\\n")
-                  .replace("\r", "\\r")
-                  .replace("\t", "\\t");
+        try {
+            String json = MAPPER.writeValueAsString(str);
+            if (json.startsWith("\"") && json.endsWith("\"")) {
+                return json.substring(1, json.length() - 1);
+            }
+            return json;
+        } catch (Exception e) {
+            return str.replace("\\", "\\\\").replace("\"", "\\\"");
+        }
     }
 }

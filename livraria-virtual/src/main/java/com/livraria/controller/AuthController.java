@@ -1,26 +1,36 @@
 package com.livraria.controller;
 
-import com.livraria.dao.UsuarioDAO;
-import com.livraria.model.Usuario;
+import com.livraria.dto.AuthResponse;
+import com.livraria.dto.LoginRequest;
+import com.livraria.dto.RegisterRequest;
+import com.livraria.dto.UpdateProfileRequest;
+import com.livraria.dto.UsuarioResponse;
+import com.livraria.security.JwtService;
+import com.livraria.security.UserPrincipal;
+import com.livraria.service.UsuarioService;
 import com.livraria.util.HttpHelper;
 import com.livraria.util.JsonHelper;
 import com.sun.net.httpserver.HttpExchange;
 import com.sun.net.httpserver.HttpHandler;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.Map;
 
 /**
- * Controller de Autenticação e Perfil de Usuário na LibraryClound:
- * - POST /api/auth/register : Cadastro com nome fantasia, email e senha (máx 8 números)
- * - POST /api/auth/login    : Login
- * - GET  /api/auth/me       : Consulta dados atualizados do perfil
+ * Controller REST de Autenticação e Perfil de Usuário na LibraryClound:
+ * - POST /api/auth/register : Cadastro com emissão de JWT
+ * - POST /api/auth/login    : Login com validação BCrypt e emissão de JWT
+ * - GET  /api/auth/me       : Consulta dados atualizados do perfil autenticado
  * - PUT  /api/auth/perfil   : Edição de perfil (nome, foto e descrição até 150 caracteres)
  */
 public class AuthController implements HttpHandler {
 
-    private final UsuarioDAO usuarioDAO = new UsuarioDAO();
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
+
+    private final UsuarioService usuarioService = new UsuarioService();
+    private final JwtService jwtService = new JwtService();
 
     @Override
     public void handle(HttpExchange exchange) throws IOException {
@@ -42,130 +52,62 @@ public class AuthController implements HttpHandler {
                 handleMe(exchange);
             } else if (path.endsWith("/perfil") && ("PUT".equalsIgnoreCase(method) || "POST".equalsIgnoreCase(method))) {
                 handleAtualizarPerfil(exchange);
+            } else if (path.endsWith("/usuarios") && "GET".equalsIgnoreCase(method)) {
+                HttpHelper.sendObjectResponse(exchange, 200, usuarioService.listarTodos());
             } else {
                 HttpHelper.sendJsonResponse(exchange, 404, "{\"erro\":\"Endpoint de autenticação não encontrado\"}");
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-            HttpHelper.sendJsonResponse(exchange, 500, "{\"erro\":\"Erro no banco de dados SQLite: " + JsonHelper.escape(e.getMessage()) + "\"}");
         } catch (Exception e) {
-            e.printStackTrace();
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"Requisição inválida: " + JsonHelper.escape(e.getMessage()) + "\"}");
+            HttpHelper.sendError(exchange, e);
         }
     }
 
-    private void handleRegister(HttpExchange exchange) throws IOException, SQLException {
-        String body = HttpHelper.readRequestBody(exchange);
-        Map<String, String> dados = JsonHelper.parseJson(body);
-
-        String nomeFantasia = JsonHelper.getString(dados, "nomeFantasia", "");
-        String email = JsonHelper.getString(dados, "email", "");
-        String senha = JsonHelper.getString(dados, "senha", "");
-        String tipo = JsonHelper.getString(dados, "tipo", "CLIENTE");
-
-        if (nomeFantasia.isEmpty() || email.isEmpty() || senha.isEmpty()) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"Preencha todos os campos obrigatórios.\"}");
-            return;
-        }
-
-        // Validação da senha: no máximo 8 números
-        if (!Usuario.isSenhaValida(senha)) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"A senha deve conter exclusivamente números e no máximo 8 dígitos (ex: 12345678).\"}");
-            return;
-        }
-
-        if (usuarioDAO.existeEmail(email)) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"Este email já está cadastrado na LibraryClound.\"}");
-            return;
-        }
-
-        Usuario novoUsuario = new Usuario(nomeFantasia, email, senha, tipo);
-        novoUsuario.setFotoUrl("https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150");
-        novoUsuario.setDescricao("Novo leitor da LibraryClound!");
-
-        Usuario salvo = usuarioDAO.cadastrar(novoUsuario);
-
-        String resposta = "{"
-                + "\"mensagem\":\"Cadastro realizado com sucesso na LibraryClound!\","
-                + "\"usuario\":" + salvo.toJson()
-                + "}";
-        HttpHelper.sendJsonResponse(exchange, 201, resposta);
+    private void handleRegister(HttpExchange exchange) throws IOException {
+        RegisterRequest request = HttpHelper.readJsonBody(exchange, RegisterRequest.class);
+        AuthResponse response = usuarioService.cadastrar(request);
+        HttpHelper.sendObjectResponse(exchange, 201, response);
     }
 
-    private void handleLogin(HttpExchange exchange) throws IOException, SQLException {
-        String body = HttpHelper.readRequestBody(exchange);
-        Map<String, String> dados = JsonHelper.parseJson(body);
+    private void handleLogin(HttpExchange exchange) throws IOException {
+        LoginRequest request = HttpHelper.readJsonBody(exchange, LoginRequest.class);
+        AuthResponse response = usuarioService.autenticar(request);
+        HttpHelper.sendObjectResponse(exchange, 200, response);
+    }
 
-        String email = JsonHelper.getString(dados, "email", "");
-        String senha = JsonHelper.getString(dados, "senha", "");
+    private void handleMe(HttpExchange exchange) throws IOException {
+        UserPrincipal principal = HttpHelper.getAuthenticatedUser(exchange, jwtService);
+        int usuarioId;
 
-        if (email.isEmpty() || senha.isEmpty()) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"Informe o email e a senha para efetuar o login.\"}");
-            return;
-        }
-
-        Usuario usuario = usuarioDAO.autenticar(email, senha);
-
-        if (usuario != null) {
-            String resposta = "{"
-                    + "\"mensagem\":\"Login realizado com sucesso!\","
-                    + "\"usuario\":" + usuario.toJson()
-                    + "}";
-            HttpHelper.sendJsonResponse(exchange, 200, resposta);
+        if (principal != null) {
+            usuarioId = principal.id();
         } else {
-            HttpHelper.sendJsonResponse(exchange, 401, "{\"erro\":\"Email ou senha incorretos. Verifique suas credenciais.\"}");
+            // Compatibilidade com parâmetro de query id
+            Map<String, String> params = HttpHelper.parseQueryParams(exchange.getRequestURI().getQuery());
+            usuarioId = JsonHelper.getInt(params, "id", 0);
         }
+
+        UsuarioResponse response = usuarioService.buscarPorId(usuarioId);
+        HttpHelper.sendObjectResponse(exchange, 200, response);
     }
 
-    private void handleMe(HttpExchange exchange) throws IOException, SQLException {
-        Map<String, String> params = HttpHelper.parseQueryParams(exchange.getRequestURI().getQuery());
-        int usuarioId = JsonHelper.getInt(params, "id", 0);
-
-        if (usuarioId <= 0) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"ID do usuário não fornecido.\"}");
-            return;
-        }
-
-        Usuario usuario = usuarioDAO.buscarPorId(usuarioId);
-        if (usuario != null) {
-            HttpHelper.sendJsonResponse(exchange, 200, usuario.toJson());
-        } else {
-            HttpHelper.sendJsonResponse(exchange, 404, "{\"erro\":\"Usuário não encontrado.\"}");
-        }
-    }
-
-    /**
-     * Requisito: "aba para editar o próprio perfil, podendo editar seu nome, por uma foto, criar uma descrição sobre si de até 150 caracteres"
-     */
-    private void handleAtualizarPerfil(HttpExchange exchange) throws IOException, SQLException {
+    private void handleAtualizarPerfil(HttpExchange exchange) throws IOException {
         String body = HttpHelper.readRequestBody(exchange);
-        Map<String, String> dados = JsonHelper.parseJson(body);
+        Map<String, Object> map = JsonHelper.parseJson(body);
 
-        int id = JsonHelper.getInt(dados, "id", 0);
-        String nomeFantasia = JsonHelper.getString(dados, "nomeFantasia", "");
-        String fotoUrl = JsonHelper.getString(dados, "fotoUrl", "");
-        String descricao = JsonHelper.getString(dados, "descricao", "");
+        UserPrincipal principal = HttpHelper.getAuthenticatedUser(exchange, jwtService);
+        int usuarioId = (principal != null) ? principal.id() : JsonHelper.getInt(map, "id", 0);
 
-        if (id <= 0 || nomeFantasia.isBlank()) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"ID de usuário e Nome Fantasia são obrigatórios.\"}");
-            return;
-        }
+        String nome = JsonHelper.getString(map, "nomeFantasia", "");
+        String foto = JsonHelper.getString(map, "fotoUrl", "");
+        String desc = JsonHelper.getString(map, "descricao", "");
 
-        // Validação da regra: descrição de até 150 caracteres
-        if (descricao != null && descricao.length() > 150) {
-            HttpHelper.sendJsonResponse(exchange, 400, "{\"erro\":\"A descrição de perfil não pode ultrapassar 150 caracteres (atual: " + descricao.length() + ").\"}");
-            return;
-        }
+        UpdateProfileRequest request = new UpdateProfileRequest(nome, foto, desc);
+        UsuarioResponse atualizado = usuarioService.atualizarPerfil(usuarioId, request);
 
-        Usuario atualizado = usuarioDAO.atualizarPerfil(id, nomeFantasia, fotoUrl, descricao);
-        if (atualizado != null) {
-            String resposta = "{"
-                    + "\"mensagem\":\"Perfil atualizado com sucesso!\","
-                    + "\"usuario\":" + atualizado.toJson()
-                    + "}";
-            HttpHelper.sendJsonResponse(exchange, 200, resposta);
-        } else {
-            HttpHelper.sendJsonResponse(exchange, 404, "{\"erro\":\"Usuário não encontrado para atualização.\"}");
-        }
+        Map<String, Object> resposta = Map.of(
+                "mensagem", "Perfil atualizado com sucesso!",
+                "usuario", atualizado
+        );
+        HttpHelper.sendObjectResponse(exchange, 200, resposta);
     }
 }
