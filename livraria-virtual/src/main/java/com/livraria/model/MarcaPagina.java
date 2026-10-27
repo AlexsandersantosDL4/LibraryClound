@@ -92,6 +92,11 @@ public class MarcaPagina {
         this.dataAtualizacao = dataAtualizacao;
     }
 
+    public int getProgressoPercentual() {
+        if (totalPaginas <= 0) return 0;
+        return Math.min(100, Math.round(((float) paginaAtual / totalPaginas) * 100));
+    }
+
     public String toJson() {
         return "{"
                 + "\"id\":" + id + ","
@@ -100,6 +105,7 @@ public class MarcaPagina {
                 + "\"livroTitulo\":\"" + (livroTitulo != null ? escapeJson(livroTitulo) : "") + "\","
                 + "\"paginaAtual\":" + paginaAtual + ","
                 + "\"totalPaginas\":" + totalPaginas + ","
+                + "\"progressoPercentual\":" + getProgressoPercentual() + ","
                 + "\"finalizado\":" + finalizado + ","
                 + "\"dataAtualizacao\":\"" + (dataAtualizacao != null ? escapeJson(dataAtualizacao) : "") + "\""
                 + "}";

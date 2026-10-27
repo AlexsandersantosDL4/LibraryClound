@@ -3,20 +3,23 @@ package com.livraria.model;
 /**
  * Modelo de dados que representa um Usuário no sistema LibraryClound.
  * Atende aos requisitos:
- * - Cadastro com nome fantasia, email e senha (máx 8 números)
+ * - Cadastro com nome fantasia, email e senha
  * - Perfil editável: nome fantasia, foto de perfil e descrição de até 150 caracteres
  * - Contagem oficial de livros lidos no perfil
- * - Distinção entre perfil CLIENTE e ADMIN
+ * - Distinção entre perfil CLIENTE e ADMIN via Role enum
+ * - Timestamps de auditoria (criadoEm, atualizadoEm)
  */
 public class Usuario {
     private int id;
     private String nomeFantasia;
     private String email;
     private String senha;
-    private String tipo; // "ADMIN" ou "CLIENTE"
+    private Role role = Role.CLIENTE;
     private int livrosLidos;
     private String fotoUrl;
-    private String descricao; // Até 150 caracteres
+    private String descricao;
+    private String criadoEm;
+    private String atualizadoEm;
 
     public Usuario() {
     }
@@ -26,7 +29,7 @@ public class Usuario {
         this.nomeFantasia = nomeFantasia;
         this.email = email;
         this.senha = senha;
-        this.tipo = tipo;
+        this.role = Role.fromString(tipo);
         this.livrosLidos = livrosLidos;
         this.fotoUrl = fotoUrl;
         this.descricao = descricao;
@@ -36,11 +39,11 @@ public class Usuario {
         this(0, nomeFantasia, email, senha, tipo, 0, "", "");
     }
 
-    // Regra de negócio: A senha deve conter apenas números e no máximo 8 dígitos
+    // Regra de negócio: A senha pode ser números até 8 dígitos ou alfanumérica de até 30 caracteres
     public static boolean isSenhaValida(String senha) {
         if (senha == null) return false;
         String limpa = senha.trim();
-        return limpa.matches("^[0-9]{1,8}$");
+        return !limpa.isEmpty() && limpa.length() <= 32;
     }
 
     public int getId() {
@@ -76,15 +79,23 @@ public class Usuario {
     }
 
     public String getTipo() {
-        return tipo;
+        return role != null ? role.name() : Role.CLIENTE.name();
     }
 
     public void setTipo(String tipo) {
-        this.tipo = tipo;
+        this.role = Role.fromString(tipo);
+    }
+
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role != null ? role : Role.CLIENTE;
     }
 
     public boolean isAdmin() {
-        return "ADMIN".equalsIgnoreCase(this.tipo);
+        return this.role == Role.ADMIN;
     }
 
     public int getLivrosLidos() {
@@ -115,6 +126,22 @@ public class Usuario {
         }
     }
 
+    public String getCriadoEm() {
+        return criadoEm;
+    }
+
+    public void setCriadoEm(String criadoEm) {
+        this.criadoEm = criadoEm;
+    }
+
+    public String getAtualizadoEm() {
+        return atualizadoEm;
+    }
+
+    public void setAtualizadoEm(String atualizadoEm) {
+        this.atualizadoEm = atualizadoEm;
+    }
+
     /**
      * Serialização simples para JSON (segura, omitindo a senha para respostas da API).
      */
@@ -123,10 +150,11 @@ public class Usuario {
                 + "\"id\":" + id + ","
                 + "\"nomeFantasia\":\"" + escapeJson(nomeFantasia) + "\","
                 + "\"email\":\"" + escapeJson(email) + "\","
-                + "\"tipo\":\"" + escapeJson(tipo) + "\","
+                + "\"tipo\":\"" + escapeJson(getTipo()) + "\","
                 + "\"livrosLidos\":" + livrosLidos + ","
                 + "\"fotoUrl\":\"" + escapeJson(fotoUrl != null ? fotoUrl : "") + "\","
-                + "\"descricao\":\"" + escapeJson(descricao != null ? descricao : "") + "\""
+                + "\"descricao\":\"" + escapeJson(descricao != null ? descricao : "") + "\","
+                + "\"criadoEm\":\"" + escapeJson(criadoEm != null ? criadoEm : "") + "\""
                 + "}";
     }
 
