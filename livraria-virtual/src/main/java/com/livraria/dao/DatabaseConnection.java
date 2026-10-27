@@ -1,5 +1,6 @@
 package com.livraria.dao;
 
+import com.livraria.config.DatabaseConfig;
 import java.io.File;
 import java.sql.Connection;
 import java.sql.DriverManager;
@@ -10,24 +11,14 @@ import java.sql.Statement;
 
 /**
  * Gerenciador de conexão com o banco de dados SQLite para a LibraryClound.
- * Cria e atualiza automaticamente as tabelas (incluindo favoritos, avaliações,
- * foto/descrição do perfil e conteúdo completo dos livros).
+ * Agora integrado ao pool HikariCP via DatabaseConfig.
  */
 public class DatabaseConnection {
 
     private static final String DB_FILE = "livraria.db";
-    private static final String URL = "jdbc:sqlite:" + DB_FILE;
-
-    static {
-        try {
-            Class.forName("org.sqlite.JDBC");
-        } catch (ClassNotFoundException e) {
-            System.err.println("Driver JDBC do SQLite não encontrado no classpath: " + e.getMessage());
-        }
-    }
 
     public static Connection getConnection() throws SQLException {
-        return DriverManager.getConnection(URL);
+        return DatabaseConfig.getConnection();
     }
 
     public static void inicializarBanco() {

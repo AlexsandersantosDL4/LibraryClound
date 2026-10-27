@@ -19,9 +19,9 @@ if (-not (Test-Path "bin")) {
     New-Item -ItemType Directory -Path "bin" | Out-Null
 }
 
-Write-Host "[1/3] Compilando arquivos Java com SQLite..." -ForegroundColor Yellow
+Write-Host "[1/3] Compilando arquivos Java com Java 21 e SQLite..." -ForegroundColor Yellow
 $javaFiles = Get-ChildItem -Path "src\main\java" -Recurse -Filter "*.java" | Select-Object -ExpandProperty FullName
-& $javac -encoding UTF-8 -cp "lib/*" -d bin $javaFiles
+& $javac --release 21 -encoding UTF-8 -cp "lib/*" -d bin $javaFiles
 
 if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERRO] Falha na compilação!" -ForegroundColor Red
