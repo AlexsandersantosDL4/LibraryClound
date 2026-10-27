@@ -110,20 +110,24 @@ public class DatabaseConnection {
             stmt.execute(sqlAvaliacoes);
 
             // Migrações seguras caso colunas novas ainda não existam no banco existente
+            // NOTA SQLITE: ALTER TABLE ADD COLUMN não aceita DEFAULT CURRENT_TIMESTAMP (expressões não constantes)
             executarMigracao(stmt, "ALTER TABLE usuarios ADD COLUMN foto_url TEXT");
             executarMigracao(stmt, "ALTER TABLE usuarios ADD COLUMN descricao TEXT");
-            executarMigracao(stmt, "ALTER TABLE usuarios ADD COLUMN criado_em TEXT DEFAULT CURRENT_TIMESTAMP");
+            executarMigracao(stmt, "ALTER TABLE usuarios ADD COLUMN criado_em TEXT");
             executarMigracao(stmt, "ALTER TABLE usuarios ADD COLUMN atualizado_em TEXT");
+            executarMigracao(stmt, "UPDATE usuarios SET criado_em = datetime('now') WHERE criado_em IS NULL");
 
             executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN conteudo TEXT");
             executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN categoria_id INTEGER REFERENCES categorias(id)");
             executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN isbn TEXT");
             executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN data_publicacao TEXT");
-            executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN criado_em TEXT DEFAULT CURRENT_TIMESTAMP");
+            executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN criado_em TEXT");
             executarMigracao(stmt, "ALTER TABLE livros ADD COLUMN atualizado_em TEXT");
+            executarMigracao(stmt, "UPDATE livros SET criado_em = datetime('now') WHERE criado_em IS NULL");
 
             executarMigracao(stmt, "ALTER TABLE avaliacoes ADD COLUMN comentario TEXT");
-            executarMigracao(stmt, "ALTER TABLE avaliacoes ADD COLUMN criado_em TEXT DEFAULT CURRENT_TIMESTAMP");
+            executarMigracao(stmt, "ALTER TABLE avaliacoes ADD COLUMN criado_em TEXT");
+            executarMigracao(stmt, "UPDATE avaliacoes SET criado_em = datetime('now') WHERE criado_em IS NULL");
 
             // Seed inicial de categorias, administradores e livros de exemplo
             inserirCategoriasIniciais(conn);
@@ -139,8 +143,11 @@ public class DatabaseConnection {
     private static void executarMigracao(Statement stmt, String sql) {
         try {
             stmt.execute(sql);
-        } catch (SQLException ignored) {
-            // Coluna já existe ou migração já executada
+        } catch (SQLException e) {
+            String msg = (e.getMessage() != null) ? e.getMessage().toLowerCase() : "";
+            if (!msg.contains("duplicate column")) {
+                logger.debug("Migração não aplicada ({}): {}", sql, e.getMessage());
+            }
         }
     }
 

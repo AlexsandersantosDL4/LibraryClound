@@ -17,6 +17,12 @@ if %ERRORLEVEL% NEQ 0 (
 
 if not exist bin mkdir bin
 
+echo [0/3] Verificando se a porta 8080 esta livre...
+for /f "tokens=5" %%a in ('netstat -ano ^| findstr :8080 ^| findstr LISTENING') do (
+    echo Liberando porta 8080 (encerrando processo %%a)...
+    taskkill /F /PID %%a >nul 2>&1
+)
+
 echo [1/3] Compilando arquivos Java com Java 21...
 dir /s /B src\main\java\*.java > sources.txt
 "%JAVAC_CMD%" --release 21 -encoding UTF-8 -cp "lib/*" -d bin @sources.txt

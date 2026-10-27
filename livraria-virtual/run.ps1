@@ -19,6 +19,13 @@ if (-not (Test-Path "bin")) {
     New-Item -ItemType Directory -Path "bin" | Out-Null
 }
 
+# Garante que a porta 8080 esteja livre
+$portProcess = Get-NetTCPConnection -LocalPort 8080 -State Listen -ErrorAction SilentlyContinue | Select-Object -ExpandProperty OwningProcess -Unique
+if ($portProcess) {
+    Write-Host "[0/3] Liberando porta 8080 (encerrando processo $portProcess)..." -ForegroundColor Yellow
+    Stop-Process -Id $portProcess -Force -ErrorAction SilentlyContinue
+}
+
 Write-Host "[1/3] Compilando arquivos Java com Java 21 e SQLite..." -ForegroundColor Yellow
 $javaFiles = Get-ChildItem -Path "src\main\java" -Recurse -Filter "*.java" | Select-Object -ExpandProperty FullName
 & $javac --release 21 -encoding UTF-8 -cp "lib/*" -d bin $javaFiles
